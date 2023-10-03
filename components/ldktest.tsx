@@ -1,4 +1,4 @@
-import LDK, { BroadcasterInterface, BroadcasterInterfaceInterface, ConfirmationTarget, DefaultRouter, FeeEstimatorInterface, Logger, LoggerInterface, NetworkGraph } from "lightningdevkit"
+import LDK, { BroadcasterInterface, BroadcasterInterfaceInterface, ChainMonitor, ConfirmationTarget, DefaultRouter, FeeEstimatorInterface, Filter, FilterInterface, KeysManager, Logger, LoggerInterface, NetworkGraph, Persist, PersistInterface } from "lightningdevkit"
 import { ChannelManager } from "lightningdevkit"
 
 
@@ -41,6 +41,60 @@ class MyBroadcaster implements BroadcasterInterfaceInterface {
 }
 
 let broadcaster = new MyBroadcaster()
+
+// 4. Persist
+
+class MyPersister implements PersistInterface {
+    persist_new_channel(channel_id: LDK.OutPoint, data: LDK.ChannelMonitor, update_id: LDK.MonitorUpdateId): LDK.ChannelMonitorUpdateStatus {
+        console.log("Persisting")
+        return LDK.ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
+        
+    }
+    update_persisted_channel(channel_id: LDK.OutPoint, update: LDK.ChannelMonitorUpdate, data: LDK.ChannelMonitor, update_id: LDK.MonitorUpdateId): LDK.ChannelMonitorUpdateStatus {
+        console.log("Updating Persist")
+        return LDK.ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
+    }
+}
+
+let persister = new MyPersister()
+
+// 5. Fiter (optional)
+
+class MyFilter implements FilterInterface {
+    register_tx(txid: Uint8Array, script_pubkey: Uint8Array): void {
+        console.log(txid)
+        console.log(script_pubkey)
+    }
+    register_output(output: LDK.WatchedOutput): void {
+        console.log(output)
+    }
+}
+
+let filter = new MyFilter()
+
+// 6. Initialize ChainMonitor
+
+// using "as any" keyword to solve type error
+let chainMonitor = new (ChainMonitor.constructor_new as any)(
+    filter,
+    broadcaster,
+    logger,
+    feeEstimator,
+    persister
+)
+
+// 7. KeysManager
+
+let seed = 2 //pseudo random number
+let timestampSeconds = Math.floor(new Date().getTime() / 1000);
+let timestampNanos = Math.floor(timestampSeconds * 1000 * 1000)
+
+let keysManager = new (KeysManager.constructor_new as any)(
+    seed,
+    timestampSeconds,
+    timestampNanos
+)
+
 
 
 
